@@ -1,0 +1,150 @@
+МІНІСТЕРСТВО ОСВІТИ І НАУКИ УКРАЇНИ
+ХАРКІВСЬКИЙ НАЦІОНАЛЬНИЙ УНІВЕРСИТЕТ РАДІОЕЛЕКТРОНІКИ
+КАФЕДРА ПРОГРАМНОЇ ІНЖЕНЕРІЇ
+
+Звіт
+
+з лабораторної роботи №1
+з дисципліни
+«Скриптові мови програмування»
+
+
+Виконав:
+ст. гр. ПЗПІ-23-2
+Горбатюк Єгор
+
+Перевірив:
+ст. викладач кафедри ПІ
+Сокорчук Ігор Петрович
+
+
+Харків – 2025
+
+
+ЗАВДАННЯ
+
+Розробити Bash-скрипт, який обробляє експортований із сайту https://cist.nure.ua/ розклад занять для всіх груп потоку в форматі CSV та перетворює його у формат CSV для завантаження в Google Календар https://support.google.com/.
+
+ХІД РОБОТИ
+
+Створимо скрипт `cist_converter.sh`. Вказуємо оболонку:
+
+1  #!/bin/bash
+
+Створимо функцію для виводу помилок з повідомленням та завершенням:
+
+2  error() {
+3      echo "Error: \$1." >&2;
+4      exit \$2;
+5  }
+
+Реалізуємо функцію вибору елементів через select:
+
+6  select\_from(){
+7      if \[ -n "\$2" -a \$(echo "\$1" | wc -l) -eq 1 ]; then echo "\$1"; return 0; fi
+8
+9      select selected in quit \$1; do
+10          case "\$selected" in
+11              '') continue ;;
+12              'quit') return 1 ;;
+13              \*) echo "\$selected"; return 0 ;;
+14          esac
+15      done
+16  }
+
+Додамо підтримку командних аргументів:
+
+17  if \[ "\$1" = "--version" ]; then echo 'cist converter 1.0'; exit 0; fi
+18  if \[ "\$1" = "--help" ]; then
+19      echo "Usage: \$0 \[--help | --version] | \[-q|--quiet] \[\[академ\_група] файл\_із\_cist.csv]"
+20      echo 'Convert schedule.csv from CIST format into Google Calendar format'
+21      echo -e "  --help \t\tPrint this help message and exit"
+22      echo -e "  --version \t\tPrint version info and exit"
+23      echo -e "  -q, --quiet \t\tDo not print the result to stdout"
+24      echo -e "  академ\_група \t\tOptional group name"
+25      echo -e "  файл\_із\_cist.csv \tCSV file to process"
+26      exit 0;
+27  }
+
+Обробимо прапор тихого режиму:
+
+28  exec 3>&1;
+29  if \[ "\$1" = "-q" -o "\$1" = "--quiet" ]; then exec 3>/dev/null; shift; fi
+
+Зберемо параметри: групу і CSV-файл:
+
+30  if \[ \$# -eq 2 ]; then group="\$1"; shift; fi
+31  if \[ \$# -eq 1 ]; then csv="\$1"; fi
+
+Сформуємо список доступних файлів CSV у каталозі:
+
+32  csvs=\$(ls TimeTable\_??\_??\_20??.csv 2>/dev/null | sort)
+
+Запропонуємо користувачу обрати файл, якщо його не передано:
+
+33  if \[ -z "\$csv" ]; then csv=\$(select\_from "\$csvs") || exit 0; fi
+
+Перевіримо існування та права доступу до файлу:
+
+34  if \[ ! -f "\$csv" ]; then error "file '\$csv' is not exist" 1; fi
+35  if \[ ! -r "\$csv" ]; then error "permission to read file '\$csv' denied" 2; fi
+
+Сконвертуємо кодування вхідного CSV та зберемо його в змінну:
+
+36  csv\_data=\$( cat "\$csv" | sed 's/\r/\n/g' | iconv -f cp1251 -t utf8 )
+
+Отримаємо список унікальних груп із CSV-файлу:
+
+37  groups=\$(
+38      echo "\$csv\_data"&#x20;
+39      | awk -v FPAT='\[^,]*|"\[^"]*"' '
+40          NR > 1 {
+41              gsub(/^"/, "", \$1);
+42              if (split(\$1, res, " - ") != 1) print res\[1]
+43          }
+44      '&#x20;
+45      | sort&#x20;
+46      | uniq
+47  )
+
+Запропонуємо вибір групи, якщо не була задана в параметрах:
+
+48  if \[ -z "\$group" ]; then group=\$(select\_from "\$groups" "skip") || exit 0; fi
+
+Якщо введено неіснуючу групу, запропонуємо вибрати іншу:
+
+49  if ! echo "\$groups" | grep "\$group"; then
+50      echo "No '\$group' group in '\$csv'."
+51      group=\$(select\_from "\$groups" "skip") || exit 0;
+52  fi
+
+Основна обробка: фільтрація, форматування, формування рядків для Google Calendar:
+
+53  echo "\$csv\_data"&#x20;
+54  | awk -v FPAT='\[^,]*|"\[^"]*"' -v pattern="\$(\[ -n "\$group" ] && echo "^"\$group - ")" '
+55      function time\_fmt(time) {
+56          gsub(/:|"/, " ", time)
+57          return strftime("%I:%M %p", mktime("1970 01 01" time))
+58      }
+59
+60      function date\_fmt(date) {
+61          gsub(/"/, "", date)
+62          split(date, dp, ".")
+63          return strftime("%m/%d/%Y", mktime(dp\[3] " " dp\[2] " " dp\[1] " 00 00 00"))
+64      }
+65
+66      NR==1 { print "Subject,Start Date,Start Time,End Date,End Time,Description" }
+67
+68      NR!=1 && \$1 \~ pattern {
+69          gsub(pattern "|^"|"\$", "", \$1)
+70
+71          printf(""%s; №%d",%s,%s,%s,%s,%s\n",
+72              \$1, ++lessons\[\$2], date\_fmt(\$2), time\_fmt(\$3), date\_fmt(\$4), time\_fmt(\$5), \$12)
+73      }
+74  '&#x20;
+75  | tee "Google\_\$(basename "\$csv")" >&3
+
+
+ВИСНОВКИ
+
+У результаті виконання практичної роботи було створено консольну програму мовою PHP, яка імітує роботу продуктового магазину. Реалізовано інтерфейс з меню, кошиком, виведенням рахунку та налаштуванням профілю користувача. Опановано принципи роботи з функціями, умовними конструкціями та введенням з клавіатури. Програма демонструє базову взаємодію користувача з системою та обробку введених даних.
