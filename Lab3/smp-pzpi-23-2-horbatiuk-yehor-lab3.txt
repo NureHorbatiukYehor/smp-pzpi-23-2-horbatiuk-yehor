@@ -1,0 +1,327 @@
+МІНІСТЕРСТВО ОСВІТИ І НАУКИ УКРАЇНИ
+ХАРКІВСЬКИЙ НАЦІОНАЛЬНИЙ УНІВЕРСИТЕТ РАДІОЕЛЕКТРОНІКИ
+КАФЕДРА ПРОГРАМНОЇ ІНЖЕНЕРІЇ
+
+Звіт
+
+з лабораторної роботи №3
+з дисципліни
+«Скриптові мови програмування»
+
+
+Виконав:                                                                                              Перевірив:
+ст. гр. ПЗПІ-23-2                                                                                 Ст. викл.                                                                                                             
+Горбатюк Єгор                                                                                    Сокорчук І.П.                                    
+
+
+
+
+
+
+
+
+
+
+
+
+Харків – 2025
+ЗАВДАННЯ
+Результатом лабораторної роботи має бути робочий сайт з інтернет магазином. 
+ХІД РОБОТИ
+Створюємо файл index.html для відображення каталогу товарів та інтерактивної взаємодії користувача.
+Цей HTML-документ містить розмітку головної сторінки магазину разом із підключенням CSS-стилів та JavaScript-логіки. За допомогою JavaScript формується динамічний перелік напоїв із кнопками «Buy», які, при натисканні, відправляють AJAX-запит до серверного скрипта api/add_to_cart.php. Таким чином, користувач може вибрати потрібну кількість кожного товару, після чого дані відсилатимуться на сервер без перезавантаження сторінки.
+1  <!DOCTYPE html>
+2  <html lang="en">
+3  <head>
+4    <meta charset="UTF-8" />
+5    <title>Drink Shop</title>
+6    <link rel="stylesheet" href="style.css" />
+7  </head>
+8  <body>
+9    <header>
+10     <h1>Drink Shop</h1>
+11     <a href="cart.php">View Cart</a>
+12   </header>
+13
+14   <main>
+15     <div id="products"></div>
+16   </main>
+17
+18   <footer>
+19     <p>&copy; 2025 Drink Shop</p>
+20   </footer>
+21
+22   <script>
+23     const products = [
+24       { id: 1, name: "Cola", price: 2.0 },
+25       { id: 2, name: "Pepsi", price: 1.8 },
+26       { id: 3, name: "Sprite", price: 1.5 }
+27     ];
+28
+29     const container = document.getElementById("products");
+30     products.forEach(p => {
+31       container.innerHTML += `
+32         <div>
+33           <h3>${p.name}</h3>
+34           <p>Price: $${p.price.toFixed(2)}</p>
+35           <input type="number" id="qty-${p.id}" min="1" value="1">
+36           <button onclick="addToCart(${p.id})">Buy</button>
+37         </div>
+38       `;
+39     });
+40
+41     function addToCart(id) {
+42       const qty = document.getElementById(`qty-${id}`).value;
+43       fetch('api/add_to_cart.php', {
+44         method: 'POST',
+45         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+46         body: `id=${id}&qty=${qty}`
+47       }).then(() => alert("Added to cart!"));
+48     }
+49   </script>
+50 </body>
+51 </html>
+
+Створюємо файл style.css для стилізації інтерфейсу та забезпечення уніфікованого вигляду всіх сторінок.
+У цьому файлі задаються базові стилі для всіх елементів веб-застосунку, включаючи налаштування шрифту, відступів і кольорів фону для header і footer, а також стилі для кнопок, полів введення й таблиць. Завдяки цим правилам створюється приємний та зручний інтерфейс, який виглядає однаково в різних браузерах і на різних пристроях.
+1  body {
+2    font-family: Arial, sans-serif;
+3    margin: 0;
+4    padding: 0;
+5  }
+6
+7  header, footer {
+8    background-color: #f8f8f8;
+9    padding: 1rem;
+10   text-align: center;
+11 }
+12
+13 header a {
+14   float: right;
+15   margin-top: -2rem;
+16   margin-right: 1rem;
+17   text-decoration: none;
+18   color: #007bff;
+19 }
+20
+21 main {
+22   padding: 1rem;
+23 }
+24
+25 .product {
+26   border: 1px solid #ccc;
+27   padding: 1rem;
+28   margin-bottom: 1rem;
+29 }
+30
+31 button {
+32   background-color: #28a745;
+33   color: white;
+34   border: none;
+35   padding: 0.5rem 1rem;
+36   cursor: pointer;
+37 }
+38
+39 input[type="number"] {
+40   width: 50px;
+41   margin-right: 10px;
+42 }
+43
+44 table {
+45   width: 100%;
+46   border-collapse: collapse;
+47   margin-top: 1rem;
+48 }
+49
+50 th, td {
+51   padding: 0.5rem;
+52   border: 1px solid #ddd;
+53   text-align: center;
+54 }
+
+Створюємо файл cart.php для відображення кошика та обробки даних сесії (серверна обробка).
+У цьому PHP-скрипті реалізовано роботу з PHP-сесіями для збереження стану кошика між запитами користувача. Після виклику session_start() відбувається ініціалізація або читання вже існуючого масиву $_SESSION['cart']. Далі формується асоціативний масив товарів із їхніми назвами й цінами. Якщо кошик пустий, виводиться відповідне повідомлення, а якщо ні — генерується HTML-таблиця, у якій перелічуються всі товари, їхня одинична ціна, кількість і загальна вартість кожної позиції, а також обчислюється підсумкова сума. Внизу сторінки розміщена форма з кнопкою «Clear Cart», яка при натисканні відправляє POST-запит на api/clear_cart.php для очищення кошика.
+1  <?php
+2  session_start();
+3
+4  $products = [
+5    1 => ['name' => 'Cola', 'price' => 2.0],
+6    2 => ['name' => 'Pepsi', 'price' => 1.8],
+7    3 => ['name' => 'Sprite', 'price' => 1.5]
+8  ];
+9
+10 $cart = $_SESSION['cart'] ?? [];
+11 $total = 0;
+12 ?>
+13 <!DOCTYPE html>
+14 <html>
+15 <head>
+16   <meta charset="UTF-8">
+17   <title>Your Cart</title>
+18   <link rel="stylesheet" href="style.css">
+19 </head>
+20 <body>
+21   <header>
+22     <h1>Your Cart</h1>
+23     <a href="index.html">Continue Shopping</a>
+24   </header>
+25
+26   <main>
+27     <?php if (empty($cart)): ?>
+28       <p>Your cart is empty. <a href="index.html">Go to shopping</a></p>
+29     <?php else: ?>
+30       <table>
+31         <tr><th>Product</th><th>Price</th><th>Qty</th><th>Total</th></tr>
+32         <?php foreach ($cart as $id => $qty): ?>
+33           <?php
+34             $item = $products[$id];
+35             $sum = $item['price'] * $qty;
+36             $total += $sum;
+37           ?>
+38           <tr>
+39             <td><?= $item['name'] ?></td>
+40             <td>$<?= number_format($item['price'], 2) ?></td>
+41             <td><?= $qty ?></td>
+42             <td>$<?= number_format($sum, 2) ?></td>
+43           </tr>
+44         <?php endforeach; ?>
+45         <tr>
+46           <td colspan="3"><strong>Total:</strong></td>
+47           <td><strong>$<?= number_format($total, 2) ?></strong></td>
+48         </tr>
+49       </table>
+50       <form method="POST" action="api/clear_cart.php">
+51         <button type="submit">Clear Cart</button>
+52       </form>
+53     <?php endif; ?>
+54   </main>
+55
+56   <footer>
+57     <p>&copy; 2025 Drink Shop</p>
+58   </footer>
+59 </body>
+60 </html>
+
+Створюємо файл cart.html для клієнтського відображення кошика із використанням localStorage (клієнтська обробка).
+Цей HTML-документ поєднує статичну розмітку та JavaScript-код, який зчитує дані про товари та кошик із localStorage, а потім динамічно формує таблицю з товарами, їхньою ціною, кількістю та підсумковою вартістю. Якщо в localStorage немає збереженого об’єкта cart, скрипт ініціалізує порожній об’єкт. Далі, якщо об’єкт cart пустий, на сторінці з’являється повідомлення з посиланням на головну сторінку для додавання товарів. Якщо товари є, виконується ітерація по всіх ключах cart, для кожного id знаходиться відповідний об’єкт у масиві drinks, обчислюється вартість і формується HTML-таблиця. Наприкінці передбачено кнопку «Clear Cart», яка видаляє дані з localStorage та перезавантажує сторінку, що дозволяє користувачу очистити свій кошик на стороні клієнта.
+1  <!DOCTYPE html>
+2  <html lang="en">
+3  <head>
+4    <meta charset="UTF-8">
+5    <title>Drink Shop - Cart</title>
+6    <link rel="stylesheet" href="style.css">
+7  </head>
+8  <body>
+9    <header>
+10     <h1>Your Cart</h1>
+11     <a href="index.html">Continue Shopping</a>
+12   </header>
+13
+14   <main>
+15     <div id="cart-content"></div>
+16     <button onclick="clearCart()">Clear Cart</button>
+17   </main>
+18
+19   <footer>
+20     <p>&copy; 2025 Drink Shop</p>
+21   </footer>
+22
+23   <script>
+24     const drinks = [
+25       { id: "1", name: "Cola", price: 2 },
+26       { id: "2", name: "Pepsi", price: 1.8 },
+27       { id: "3", name: "Sprite", price: 1.5 }
+28     ];
+29
+30     const cart = JSON.parse(localStorage.getItem("cart") || "{}");
+31     const cartContent = document.getElementById("cart-content");
+32
+33     if (Object.keys(cart).length === 0) {
+34       cartContent.innerHTML = `<p>Your cart is empty. <a href="index.html">Go to shopping</a></p>`;
+35     } else {
+36       let total = 0;
+37       let html = `<table>
+38         <tr><th>Product</th><th>Price</th><th>Qty</th><th>Total</th></tr>`;
+39       for (const id in cart) {
+40         const product = drinks.find(d => d.id === id || d.id === parseInt(id));
+41         if (!product) continue;
+42
+43         const qty = cart[id];
+44         const sum = qty * product.price;
+45         total += sum;
+46
+47         html += `<tr>
+48           <td>${product.name}</td>
+49           <td>$${product.price.toFixed(2)}</td>
+50           <td>${qty}</td>
+51           <td>$${sum.toFixed(2)}</td>
+52         </tr>`;
+53       }
+54
+55       html += `<tr>
+56         <td colspan="3"><strong>Total:</strong></td>
+57         <td><strong>$${total.toFixed(2)}</strong></td>
+58       </tr></table>`;
+59
+60       cartContent.innerHTML = html;
+61     }
+62
+63     function clearCart() {
+64       localStorage.removeItem("cart");
+65       location.reload();
+66     }
+67   </script>
+68 </body>
+69 </html>
+
+Створюємо файл api/add_to_cart.php для обробки POST-запиту додавання товарів до сесійного кошика (серверна обробка).
+Цей PHP-скрипт призначено для обробки AJAX-запитів від головної сторінки (index.html). При отриманні POST-параметрів id та qty відбувається приведення їх до цілочисельного типу, після чого:
+– Якщо значення id та qty більші за нуль, перевіряється наявність масиву $_SESSION['cart']; якщо він ще не ініціалізований, створюється порожній масив.
+– Далі перевіряється, чи існує в сесії запис для обраного id; якщо немає, створюється початкове значення 0.
+– Додається введена кількість до поточної кількості цього товару в кошику.
+– Після успішного оновлення сесійного масиву повертається HTTP-код 200, що сигналізує фронтенду про успішне виконання операції.
+1  <?php
+2  session_start();
+3
+4  $id = intval($_POST['id']);
+5  $qty = intval($_POST['qty']);
+6
+7  if ($id > 0 && $qty > 0) {
+8    if (!isset($_SESSION['cart'])) {
+9      $_SESSION['cart'] = [];
+10   }
+11   if (!isset($_SESSION['cart'][$id])) {
+12     $_SESSION['cart'][$id] = 0;
+13   }
+14   $_SESSION['cart'][$id] += $qty;
+15 }
+16
+17 http_response_code(200);
+
+Створюємо файл api/clear_cart.php для очищення кошика та перенаправлення користувача (серверна обробка).
+У цьому простому PHP-скрипті відбувається:
+– Ініціалізація сесії за допомогою session_start().
+– Виклик unset($_SESSION['cart']) для видалення масиву кошика з сесії, тобто повне очищення даних про товари.
+– Використання функції header("Location: ../cart.php") для перенаправлення користувача назад на сторінку cart.php, де буде показано порожній кошик.
+– Виклик exit зупиняє подальше виконання скрипта, забезпечуючи, що нічого не буде виведено до браузера після заголовка перенаправлення.
+1  <?php
+2  session_start();
+3  unset($_SESSION['cart']);
+4  header("Location: ../cart.php");
+5  exit;
+
+Висновки
+
+У результаті реалізовано веб-застосунок «Drink Shop» який дозволяє користувачам вибирати напої, додавати їх у кошик, переглядати вміст кошика як на сервері, так і на клієнті, а також очищувати кошик відповідно до своїх потреб. Посилання на відеозвіт - https://youtu.be/M0TuG3lF6RY Посилання на github - https://github.com/NureHorbatiukYehor/smp-pzpi-23-2-horbatiuk-yehor
+
+
+
+ 
+ДОДАТОК А
+Відеозвіт
+Посилання на відеозвіт - https://youtu.be/M0TuG3lF6RY
+ 
+ДОДАТОК Б
+Програмний код
+Код лабораторної роботи дуже об`ємний, переглянути його можна за посиланням на github - https://github.com/NureHorbatiukYehor/smp-pzpi-23-2-horbatiuk-yehor
+

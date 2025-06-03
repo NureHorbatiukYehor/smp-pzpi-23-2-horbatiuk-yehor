@@ -9,11 +9,10 @@
 «Скриптові мови програмування»
 
 
-Виконав:
-ст. гр. ПЗПІ-23-2
+Виконав:                                                                                                   Перевірив:
+ст. гр. ПЗПІ-23-2 
 Горбатюк Єгор
 
-Перевірив:
 ст. викладач кафедри ПІ
 Сокорчук Ігор Петрович
 
@@ -21,11 +20,16 @@
 Харків – 2025
 
 
+
+
+
+
+
 ЗАВДАННЯ
 
 Розробити Bash-скрипт, який обробляє експортований із сайту https://cist.nure.ua/ розклад занять для всіх груп потоку в форматі CSV та перетворює його у формат CSV для завантаження в Google Календар https://support.google.com/.
 
-ОПИС ВИКОНАНОЇ РОБОТИ
+ХІД РОБОТИ
 
 Створимо скрипт `cist_converter.sh`. Вказуємо оболонку:
 
@@ -145,6 +149,110 @@
 75  | tee "Google\_\$(basename "\$csv")" >&3
 
 
+
+
+
+
+
+
 ВИСНОВКИ
 
-У результаті виконання практичної роботи було створено консольну програму мовою PHP, яка імітує роботу продуктового магазину. Реалізовано інтерфейс з меню, кошиком, виведенням рахунку та налаштуванням профілю користувача. Опановано принципи роботи з функціями, умовними конструкціями та введенням з клавіатури. Програма демонструє базову взаємодію користувача з системою та обробку введених даних.
+У результаті виконання практичної роботи було опановано принципи створення Bash-скриптів для обробки CSV-файлів і створено скрипт для перетворення файлів розкладу с сайту університету для гугл календарю.
+Посилання на відеозвіт: https://youtu.be/cr8848s036g
+
+ 
+ДОДАТОК А
+Відеозвіт
+
+Посилання на відеозвіт: https://youtu.be/cr8848s036g
+ 
+ДОДАТОК Б
+Програмний код
+1  #!/bin/bash
+ 2  
+ 3  error() {
+ 4      echo "Error: $1." >&2;
+ 5      exit $2;
+ 6  }
+ 7  
+ 8  select_from(){
+ 9      if [ -n "$2" -a $(echo "$1" | wc -l) -eq 1 ]; then echo "$1"; return 0; fi
+10  
+11      select selected in quit $1; do
+12          case "$selected" in
+13              '') continue ;;
+14              'quit') return 1 ;;
+15              *) echo "$selected"; return 0 ;;
+16          esac
+17      done
+18  }
+19  
+20  if [ "$1" = "--version" ]; then echo 'cist converter 1.0'; exit 0; fi
+21  if [ "$1" = "--help" ]; then
+22      echo "Usage: $0 [--help | --version] | [-q|--quiet] [[академ_група] файл_із_cist.csv]"
+23      echo 'Convert schedule.csv from CIST format into Google Calendar format'
+24      echo -e "  --help \t\tPrint this help message and exit"
+25      echo -e "  --version \t\tPrint version info and exit"
+26      echo -e "  -q, --quiet \t\tDo not print the result to stdout"
+27      echo -e "  академ_група \t\tOptional group name"
+28      echo -e "  файл_із_cist.csv \tCSV file to process"
+29      exit 0;
+30  fi
+31  
+32  exec 3>&1;
+33  if [ "$1" = "-q" -o "$1" = "--quiet" ]; then exec 3>/dev/null; shift; fi
+34  
+35  if [ $# -eq 2 ]; then group="$1"; shift; fi
+36  if [ $# -eq 1 ]; then csv="$1"; fi
+37  
+38  csvs=$(ls TimeTable_??_??_20??.csv 2>/dev/null | sort)
+39  
+40  if [ -z "$csv" ]; then csv=$(select_from "$csvs") || exit 0; fi
+41  
+42  if [ ! -f "$csv" ]; then error "file '$csv' is not exist" 1; fi
+43  if [ ! -r "$csv" ]; then error "permission to read file '$csv' denied" 2; fi
+44  
+45  csv_data=$( cat "$csv" | sed 's/\r/\n/g' | iconv -f cp1251 -t utf8 )
+46  
+47  groups=$(
+48      echo "$csv_data" \
+49      | awk -v FPAT='[^,]*|"[^"]*"' '
+50          NR > 1 {
+51              gsub(/^"/, "", $1);
+52              if (split($1, res, " - ") != 1) print res[1]
+53          }
+54      ' \
+55      | sort \
+56      | uniq
+57  )
+58  
+59  if [ -z "$group" ]; then group=$(select_from "$groups" "skip") || exit 0; fi
+60  
+61  if ! echo "$groups" | grep "$group"; then
+62      echo "No '$group' group in '$csv'."
+63      group=$(select_from "$groups" "skip") || exit 0;
+64  fi
+65  
+66  echo "$csv_data" \
+67  | awk -v FPAT='[^,]*|"[^"]*"' -v pattern="$([ -n "$group" ] && echo "^\"$group - ")" '
+68      function time_fmt(time) {
+69          gsub(/:|"/, " ", time)
+70          return strftime("%I:%M %p", mktime("1970 01 01" time))
+71      }
+72  
+73      function date_fmt(date) {
+74          gsub(/"/, "", date)
+75          split(date, dp, ".")
+76          return strftime("%m/%d/%Y", mktime(dp[3] " " dp[2] " " dp[1] " 00 00 00"))
+77      }
+78  
+79      NR==1 { print "Subject,Start Date,Start Time,End Date,End Time,Description" }
+80  
+81      NR!=1 && $1 ~ pattern {
+82          gsub(pattern "|^\"|\"$", "", $1)
+83  
+84          printf("\"%s; №%d\",%s,%s,%s,%s,%s\n",
+85              $1, ++lessons[$2], date_fmt($2), time_fmt($3), date_fmt($4), time_fmt($5), $12)
+86      }
+87  ' \
+88  | tee "Google_$(basename "$csv")" >&3

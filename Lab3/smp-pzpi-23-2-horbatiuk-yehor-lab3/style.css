@@ -1,0 +1,54 @@
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+header, footer {
+  background-color: #f8f8f8;
+  padding: 1rem;
+  text-align: center;
+}
+
+header a {
+  float: right;
+  margin-top: -2rem;
+  margin-right: 1rem;
+  text-decoration: none;
+  color: #007bff;
+}
+
+main {
+  padding: 1rem;
+}
+
+.product {
+  border: 1px solid #ccc;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+button {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+
+input[type="number"] {
+  width: 50px;
+  margin-right: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+th, td {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  text-align: center;
+}

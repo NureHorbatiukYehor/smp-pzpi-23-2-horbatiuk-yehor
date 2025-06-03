@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Drink Shop</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Drink Shop</h1>
+    <a href="cart.php">View Cart</a>
+  </header>
+
+  <main>
+    <div id="products"></div>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 Drink Shop</p>
+  </footer>
+
+  <script>
+    const products = [
+      { id: 1, name: "Cola", price: 2.0 },
+      { id: 2, name: "Pepsi", price: 1.8 },
+      { id: 3, name: "Sprite", price: 1.5 }
+    ];
+
+    const container = document.getElementById("products");
+    products.forEach(p => {
+      container.innerHTML += `
+        <div>
+          <h3>${p.name}</h3>
+          <p>Price: $${p.price.toFixed(2)}</p>
+          <input type="number" id="qty-${p.id}" min="1" value="1">
+          <button onclick="addToCart(${p.id})">Buy</button>
+        </div>
+      `;
+    });
+
+    function addToCart(id) {
+      const qty = document.getElementById(`qty-${id}`).value;
+      fetch('api/add_to_cart.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `id=${id}&qty=${qty}`
+      }).then(() => alert("Added to cart!"));
+    }
+  </script>
+</body>
+</html>
+
+
