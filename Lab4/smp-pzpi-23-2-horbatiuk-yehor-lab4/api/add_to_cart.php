@@ -6,5 +6,6 @@ if (!isset($_SESSION['cart'])) {
   $_SESSION['cart'] = [];
 }
 $_SESSION['cart'][$id] = ($_SESSION['cart'][$id] ?? 0) + $qty;
-header('Location: ../cart.php');
+header('Content-Type: application/json');
+echo json_encode(['success' => true]);
 exit;

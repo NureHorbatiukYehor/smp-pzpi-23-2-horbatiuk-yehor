@@ -38,5 +38,36 @@ if (!isset($_SESSION['user'])) {
     </div>
   </main>
   <?php include 'includes/footer.php'; ?>
+  <script>
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('form[action="api/add_to_cart.php"]').forEach(function(form) {
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(form);
+        fetch('api/add_to_cart.php', {
+          method: 'POST',
+          body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+          let msg = document.getElementById('cart-msg');
+          if (!msg) {
+            msg = document.createElement('div');
+            msg.id = 'cart-msg';
+            msg.style.background = '#d4edda';
+            msg.style.color = '#155724';
+            msg.style.padding = '10px';
+            msg.style.margin = '10px 0';
+            msg.style.border = '1px solid #c3e6cb';
+            msg.style.borderRadius = '5px';
+            form.parentNode.insertBefore(msg, form);
+          }
+          msg.textContent = data.success ? 'Товар добавлен в корзину!' : 'Ошибка добавления в корзину';
+          setTimeout(() => msg.remove(), 4000);
+        });
+      });
+    });
+  });
+  </script>
 </body>
 </html>

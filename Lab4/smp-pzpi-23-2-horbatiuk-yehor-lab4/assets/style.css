@@ -35,3 +35,40 @@ button {
   list-style: none;
   padding: 0;
 }
+.header {
+  background: #444;
+  padding: 10px 0;
+  text-align: left;
+  padding-left: 770px;
+}
+.header a {
+  color: #fff;
+  text-decoration: none;
+  margin: 0 10px;
+  font-weight: bold;
+}
+.header a:hover {
+  text-decoration: underline;
+  color: #ffd700;
+}
+.cart-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.cart-table th, .cart-table td {
+  border: 1px solid #e0e0e0;
+  padding: 10px 12px;
+  text-align: center;
+}
+.cart-table th {
+  background: #f2f2f2;
+  font-weight: bold;
+}
+.cart-total {
+  font-size: 1.2em;
+  text-align: right;
+  margin-top: 10px;
+}

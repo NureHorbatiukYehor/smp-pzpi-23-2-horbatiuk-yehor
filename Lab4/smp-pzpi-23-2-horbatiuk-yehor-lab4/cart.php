@@ -26,17 +26,25 @@ if (!isset($_SESSION['user'])) {
     if (empty($cart)) {
       echo '<p>Your cart is empty. <a href="index.php">Continue Shopping</a></p>';
     } else {
-      echo '<ul class="cart-items">';
+      echo '<table class="cart-table">';
+      echo '<thead><tr><th>Product</th><th>Quantity</th><th>Price</th><th>Subtotal</th></tr></thead>';
+      echo '<tbody>';
       $total = 0;
       foreach ($cart as $id => $qty):
         $product = $products[$id];
         $subtotal = $product['price'] * $qty;
         $total += $subtotal;
       ?>
-        <li><?= htmlspecialchars($product['name']) ?> — Qty: <?= $qty ?> — $<?= number_format($subtotal, 2) ?></li>
+        <tr>
+          <td><?= htmlspecialchars($product['name']) ?></td>
+          <td><?= $qty ?></td>
+          <td>$<?= number_format($product['price'], 2) ?></td>
+          <td>$<?= number_format($subtotal, 2) ?></td>
+        </tr>
       <?php endforeach;
-      echo '</ul>';
-      echo '<p><strong>Total: $' . number_format($total, 2) . '</strong></p>';
+      echo '</tbody>';
+      echo '</table>';
+      echo '<p class="cart-total"><strong>Total: $' . number_format($total, 2) . '</strong></p>';
       echo '<form action="api/clear_cart.php" method="POST"><button type="submit">Clear Cart</button></form>';
     }
     ?>
